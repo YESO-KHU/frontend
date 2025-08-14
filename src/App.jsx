@@ -6,6 +6,7 @@ import AgoraPage from './pages/Agora/AgoraPage';
 import TrendPage from './pages/Trend/TrendPage';
 import MyPage from './pages/My/MyPage';
 import NewsListPage from './pages/News/NewsListPage';
+import NewsDetailPage from './pages/News/NewsDetailPage';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path='/trend' element={<TrendPage />} />
           <Route path='/my' element={<MyPage />} />
           <Route path='/news-list' element={<NewsListPage />} />
+          <Route path='/news-detail' element={<NewsDetailPage />} />
         </Routes>
       </Router>
     </Provider>
