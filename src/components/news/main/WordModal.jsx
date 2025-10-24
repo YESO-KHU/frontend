@@ -1,87 +1,88 @@
 import styled from "styled-components";
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
+import api from '../../../api/api';
 
-const WordModal = ({ onClose, articleId = 1 }) => {
-  const [selectedWord, setSelectedWord] = useState(" ");
+const WordModal = ({ onClose, articleId, selectedText }) => {
+  const [selectedWord, setSelectedWord] = useState(selectedText || "");
   const [meaning, setMeaning] = useState(" ");
-  const [exampled, setExample] = useState(" ");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(" ");
 
-const modalRef = useRef(null);
+  const modalRef = useRef(null);
 
 
-useEffect(() => {
+  useEffect(() => {
     const handleClickOutside = (e) => {
       if (modalRef.current && !modalRef.current.contains(e.target)) onClose();
-      };
+    };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-}, [onClose]);
+  }, [onClose]);
 
-useEffect(() => {
-  const sel = window.getSelection();
-  let text = sel?.toString().trim() || "";
-
-  if (!text){
-    return;
-  }
-  text = text.replace(/\s+/g, " ").trim();
-  
-  if (text.length > 30) text = text.split(" ")[0];
-  setSelectedWord(text);
-  }, []);
+  useEffect(() => {
+    if (!selectedText) return;
+    let text = selectedText.trim().replace(/\s+/g, " ");
+    if (text.length > 30) text = text.split(" ")[0];
+    setSelectedWord(text);
+  }, [selectedText]);
 
   useEffect(() => {
     const fetchMeaning = async () => {
-      if (!selectedWord){
+      if (!selectedWord) {
         return;
       }
       setLoading(true);
       setError('');
-      try{
+      try {
         const res = await api.get(`/api/articles/${articleId}/word/search`, {
           params: {
             query: selectedWord,
-        },  
-});
+          },
+        });
+
+        console.log("용어 뜻 조회 성공:", res.data.response);
 
         const data = res.data?.response;
-        if (!data){
+        if (!data) {
           setMeaning("");
-          setExample("");
           setError("뜻을 찾지 못했어요.");
           return;
         }
 
-        setMeaning(data.description || "");
-        setExample(data.example || "");
-      } catch(e){
+        // _empty_ 값은 null로 처리
+        const desc = data.description?.trim();
+        setMeaning(!desc || desc.toLowerCase() === "_empty_" ? null : desc);
+      } catch (e) {
         setError("네트워크 오류로 조회 실패.");
-      } finally{
+      } finally {
         setLoading(false);
       }
     };
-  fetchMeaning();
+    fetchMeaning();
   }, [selectedWord, articleId]);
 
 
 
-return (
+  return (
     <ModalWrapper ref={modalRef}>
       <Header>
         <Title> {selectedWord || "용어"} </Title>
       </Header>
       <ContentBox>
         {loading && <Meaning> 불러오는 중... </Meaning>}
-          {!loading && error && <Meaning>{error}</Meaning>}
-          {!loading && !error && (
-            <>
-              <Meaning>{meaning || "뜻 정보가 없습니다."}</Meaning>
-              {example && <Example>{example}</Example>}
-            </>
-          )}
+        {!loading && error && <Meaning>{error}</Meaning>}
+        {!loading && !error && (
+          <>
+            {meaning ? (
+              <Meaning
+                dangerouslySetInnerHTML={{ __html: meaning }}
+              />
+            ) : (
+              <Meaning>뜻 정보가 없습니다.</Meaning>
+            )}
+          </>
+        )}
       </ContentBox>
     </ModalWrapper>
   );
@@ -141,17 +142,6 @@ const Meaning = styled.p`
     font-style: normal;
     font-weight: 600;
     line-height: 160%; /* 16px */
-    letter-spacing: 0.2px;
-    margin: 0;
-`;
-
-const Example = styled.p`
-    color: #666;
-    font-family: Pretendard;
-    font-size: 10px;
-    font-style: normal;
-    font-weight: 300;
-    line-height: 160%;
     letter-spacing: 0.2px;
     margin: 0;
 `;

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from '../../components/common/Header';
 import SearchBar from '../../components/common/SearchBar';
@@ -7,9 +8,7 @@ import back from "../../assets/icons/back.png";
 import bookmark_outline from "../../assets/icons/bookmark_outline.png";
 import bookmark_filled from "../../assets/icons/bookmark_filled.png";
 import AiButton from '../../components/news/main/AiButton';
-import { useNavigate } from 'react-router-dom';
 
-import { useParams } from 'react-router-dom';
 import api from '../../api/api';
 
 const mockArticle = {
@@ -40,9 +39,12 @@ const NewsDetailPage = () => {
   const [keywordsError, setKeywordsError] = useState(null);      // 에러 상태
 
   const [article, setArticle] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [articleLoading, setArticleLoading] = useState(true);
   const [error, setError] = useState(null);
   const summaryRef = useRef(null);
+
+  const [memos, setMemos] = useState([]);
+  const [memosLoading, setMemosLoading] = useState(true);
 
   const { articleId } = useParams();
 
@@ -71,6 +73,9 @@ const NewsDetailPage = () => {
 
   // 기사 데이터 불러오기
   async function getArticle() {
+    if (!articleId) return;
+    setArticleLoading(true);
+
     try {
       const res = await api.get(`/api/articles/${articleId}`);
       console.log("기사 상세 조회 API 요청 성공:", res.data.response);
@@ -78,12 +83,33 @@ const NewsDetailPage = () => {
     } catch (err) {
       console.error("API 요청 실패:", err);
     } finally {
-      setLoading(false);
+      setArticleLoading(false);
     }
   }
   useEffect(() => {
     if (articleId) getArticle();
-  }, [articleId])
+  }, [articleId]);
+
+  // 메모 데이터 불러오기
+  async function getMemos() {
+    if (!articleId) return;
+    setMemosLoading(true);
+
+    try {
+      const res = await api.get(`/api/articles/${articleId}/memos`);
+      console.log("해당 기사의 메모 리스트 조회 API 요청 성공:", res.data.response);
+      setMemos(res.data.response.memoList);
+    } catch (err) {
+      console.error("API 요청 실패:", err);
+    } finally {
+      setMemosLoading(false);
+    }
+  }
+  useEffect(() => {
+    if (articleId) getMemos();
+  }, [articleId]);
+
+
 
   // 페이지 진입 시 스크롤을 맨 위로 이동
   useEffect(() => {
@@ -145,7 +171,7 @@ const NewsDetailPage = () => {
     <>
       <HeaderContainer>
         <BackIcon src={back} alt="뒤로가기" onClick={() => navigate(-1)} />
-        <Title>news</Title>
+        <Title onClick={() => navigate('/news')}>news</Title>
         <BookmarkImg
           src={bookmarked ? bookmark_filled : bookmark_outline}
           alt={bookmarked ? '북마크됨' : '북마크'}
@@ -157,7 +183,21 @@ const NewsDetailPage = () => {
           draggable={false}
         />
       </HeaderContainer>
-      <NewsDetailContent article={article} />
+      {article && !memosLoading && (
+        <NewsDetailContent article={article} memos={memos} setMemos={setMemos} />
+      )}
+
+      {/* ✅ 스켈레톤 표시 */}
+      {articleLoading ? (
+        <SkeletonWrapper>
+          <SkeletonBox width="70%" height="24px" />
+          <SkeletonBox width="100%" height="14px" />
+          <SkeletonBox width="100%" height="14px" />
+          <SkeletonBox width="90%" height="14px" />
+          <SkeletonBox width="100%" height="200px" />
+        </SkeletonWrapper>
+      ) : null}
+
       <AiButton onClick={() => setOpenSummary((v) => !v)} />
 
 
@@ -172,8 +212,10 @@ const NewsDetailPage = () => {
       )}
 
       <ButtonContainer>
-        <AgoraButton variant="secondary">아고라 생성하기</AgoraButton>
-        <AgoraButton variant="primary">아고라 참여하기</AgoraButton>
+        <AgoraButton variant="secondary" onClick={() => navigate('/agora/create',
+          { state: { newsId: article.id, newsTitle: article.title } }
+        )}>아고라 생성하기</AgoraButton>
+        <AgoraButton variant="primary" onClick={() => navigate('/agora/join')}>아고라 참여하기</AgoraButton>
       </ButtonContainer>
 
     </>
@@ -213,12 +255,14 @@ const Title = styled.h1`
   text-transform: lowercase;
   letter-spacing: 0.02em;
   margin: 0;
+  cursor: pointer;
 `;
 
 
 const BackIcon = styled.img`
   width: auto;
   height: 10px;
+  cursor: pointer;
 `;
 
 const BookmarkImg = styled.img`
@@ -228,6 +272,7 @@ const BookmarkImg = styled.img`
     outline: 2px solid rgba(6, 6, 250, 0.6);
     outline-offset: 2px;
   }
+    cursor: pointer;
 `;
 
 const SummaryBox = styled.div`
@@ -344,4 +389,29 @@ const AgoraButton = styled.button`
         border: none;
         opacity: 0.7;
     }
+`;
+
+const SkeletonWrapper = styled.div`
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px;
+`;
+
+const SkeletonBox = styled.div`
+  width: ${({ width }) => width || '100%'};
+  height: ${({ height }) => height || '16px'};
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  animation: shimmer 1.4s ease infinite;
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
 `;

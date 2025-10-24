@@ -6,6 +6,7 @@ import { useState } from "react";
 import api from "../../api/api";
 import checkActiveIcon from '../../assets/icons/check_active.svg';
 import { useAgoraStatus } from "../../contexts/AgoraStatusContext";
+import back from "../../assets/icons/back.png";
 
 const AgoraCreatePage = () => {
   const { newsId, newsTitle } = useLocation().state;
@@ -110,7 +111,11 @@ const AgoraCreatePage = () => {
   };
   return (
     <PageContainer>
-      <Header content='아고라 생성하기' />
+
+      <HeaderContainer>
+        <BackIcon src={back} alt="뒤로가기" onClick={() => navigate(-1)} />
+        <Title>아고라 생성하기</Title>
+      </HeaderContainer>
 
       <FormContainer>
         <Label>
@@ -133,7 +138,7 @@ const AgoraCreatePage = () => {
         <Label>
           관련 기사<span>*</span>
         </Label>
-        <Input placeholder="경제 관련 기사 스크랩한 거" value={newsTitle} readOnly />
+        <InputHTML dangerouslySetInnerHTML={{ __html: newsTitle }} />
 
         <Label>
           토론 형식<span>*</span>
@@ -234,6 +239,43 @@ const PageContainer = styled.div`
   min-height: 100vh;
   padding: 0 28px 120px 28px;
 `;
+
+
+const HeaderContainer = styled.header`
+  position: relative;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 0 24px;
+  margin-bottom: 34px;
+`;
+
+const BackIcon = styled.img`
+  position: absolute;
+  left: 36px;
+  width: 6px;
+  height: 10px;
+  flex-shrink: 0;
+`;
+
+const Title = styled.h1`
+  background: linear-gradient(180deg, rgba(6, 6, 250, 0.60) 27.08%, rgba(132, 132, 255, 0.24) 143.75%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  text-align: center;
+  font-family: ABeeZee;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0.3px;
+
+  margin: 0;
+`;
+
 
 const FormContainer = styled.div`
     display: flex;
@@ -403,4 +445,22 @@ const IconWrapper = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+`;
+
+const InputHTML = styled.div`
+  width: 100%;
+  padding: 12px;
+  border-radius: 5px;
+  background: #F4F4F4;
+  font-size: 14px;
+  border: none;
+  min-height: 45px;
+  line-height: 1.5;
+
+  color: #333;
+  word-break: break-word;
+
+  b {
+    font-weight: 700;
+  }
 `;
