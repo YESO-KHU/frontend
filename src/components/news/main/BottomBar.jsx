@@ -8,27 +8,68 @@ import WordModal from "./WordModal";
 
 
 
-const BottomBar = () => {
+
+const BottomBar = ({ articleId }) => {
   const [showSelectionBar, setShowSelectionBar] = useState(false);
   const [showMemo, setShowMemo] = useState(false);
   const [showWord, setShowWord] = useState(false); 
+  const [selectedText, setSelectedText] = useState("");
+  const [startIndex, setStartIndex] = useState(0);
+  const [endIndex, setEndIndex] = useState(0);
 
   useEffect(() => {
-    const handleMouseUp = () => {
-      const selection = window.getSelection();
-      const text = selection?.toString().trim();
+    console.log("👀 useEffect 실행됨 (mouseup 리스너 등록)");
 
-      if (text) {
+    const articleBody = document.querySelector(".article-body");
+    if (!articleBody) return;
+
+  const handleMouseUp = () => {
+    const selection = window.getSelection();
+    const text = selection?.toString().trim();
+
+    if (!selection || !text) return;
+    if (showMemo || showWord) return;
+
+    const articleBody = document.querySelector(".article-body");
+    if (!articleBody) return;
+
+    const range = selection.getRangeAt(0);
+    const preRange = range.cloneRange();
+
+    // articleBody 전체 기준으로 offset 계산
+    preRange.selectNodeContents(articleBody);
+    preRange.setEnd(range.startContainer, range.startOffset);
+
+    const start = preRange.toString().length;
+    const end = start + text.length;
+
+    if (start >= 0) {
+      setShowMemo(false);
+      setTimeout(() => {
+        setSelectedText(text);
+        setStartIndex(start);
+        setEndIndex(end);
         setShowSelectionBar(true);
-      }
-      else {
-        setShowSelectionBar(false);
-      }
-    };
+      }, 50);
+    }
 
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => document.removeEventListener("mouseup", handleMouseUp);
-  }, []);
+    console.log("📍 인덱스:", start, end, " | 선택된 텍스트:", text);
+};
+
+    
+    articleBody.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      articleBody.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [showMemo, showWord]);
+
+
+  const closeAll = () => {
+    setShowMemo(false);
+    setShowWord(false);
+    setShowSelectionBar(false);
+    window.getSelection().removeAllRanges();
+  };
 
   return (
     <>
@@ -55,8 +96,22 @@ const BottomBar = () => {
         <AiButton />  
       )}
 
-      {showMemo && <MemoModal onClose={() => setShowMemo(false)} />}
-      {showWord && <WordModal onClose={() => setShowWord(false)} />}
+      {showMemo && (
+        <MemoModal
+          onClose={closeAll}
+          articleId={articleId}
+          selectedText={selectedText}
+          startIndex={startIndex}
+          endIndex={endIndex}
+        />
+      )}
+      {showWord && (
+        <WordModal
+          onClose={closeAll}
+          articleId={articleId}
+        />
+      )}
+
     </>
   );
 };

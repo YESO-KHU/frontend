@@ -1,13 +1,15 @@
 import styled from "styled-components";
 import { useState, useRef, useEffect } from "react";
-import axios from "axios";
+import api from "../../../api/api";
+
+
 
 const WordModal = ({ onClose, articleId = 1 }) => {
-  const [selectedWord, setSelectedWord] = useState(" ");
-  const [meaning, setMeaning] = useState(" ");
-  const [exampled, setExample] = useState(" ");
+  const [selectedWord, setSelectedWord] = useState("");
+  const [meaning, setMeaning] = useState("");
+  const [example, setExample] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(" ");
+  const [error, setError] = useState("");
 
 const modalRef = useRef(null);
 
