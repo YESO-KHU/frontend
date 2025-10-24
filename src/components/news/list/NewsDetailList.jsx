@@ -1,51 +1,140 @@
 import styled from "styled-components";
-import { useState } from "react";
-
-const contentData = "금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목 금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목";
-
-const newsDetailData = [
-    { id: 1, category: '경제', title: '금융 이슈 관련 내용 제목', content: contentData, time: '30분 전' },
-    { id: 2, category: '사회', title: '금융 이슈 관련 내용 제목', content: contentData, time: '1시간 전' },
-    { id: 3, category: '스포츠', title: '금융 이슈 관련 내용 제목', content: contentData, time: '1일 전' },
-    { id: 4, category: '정치', title: '금융 이슈 관련 내용 제목', content: contentData, time: '10분 전' },
-    { id: 5, category: '정치', title: '금융 이슈 관련 내용 제목', content: contentData, time: '10분 전' },
-    { id: 6, category: '정치', title: '금융 이슈 관련 내용 제목', content: contentData, time: '10분 전' },
-    { id: 7, category: '정치', title: '금융 이슈 관련 내용 제목', content: contentData, time: '10분 전' },
-    { id: 8, category: '정치', title: '금융 이슈 관련 내용 제목', content: contentData, time: '10분 전' },
-    { id: 9, category: '정치', title: '금융 이슈 관련 내용 제목', content: contentData, time: '10분 전' },
-    { id: 10, category: '정치', title: '금융 이슈 관련 내용 제목', content: contentData, time: '10분 전' },
-    { id: 11, category: '정치', title: '금융 이슈 관련 내용 제목', content: contentData, time: '10분 전' },
-];
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../../../api/api";
 
 // onSelect : 아이템 클릭 시 실행할 함수 
-const NewsDetailList = ({ showTime = true, onSelect }) => {
+const NewsDetailList = ({ showTime = true, onSelect, searchQuery = '' }) => {
+    const [articles, setArticles] = useState([]);
+    const [loading, setLoading] = useState(false);
     const [selectedId, setSelectedId] = useState(null);
+    const navigate = useNavigate();
 
-    const handleItemClick = (id) => {
-        setSelectedId(id);
-        if (onSelect) {
-            onSelect(id);
+    // // 카테고리 매핑
+    // const categoryMapping = {
+    //     'POLITICS': '정치',
+    //     'ECONOMY': '경제',
+    //     'SOCIETY': '사회',
+    //     'CULTURE': '문화',
+    //     'IT': 'IT/과학',
+    //     'GLOBAL': '글로벌',
+    //     'ETC': '이슈',
+    // };
+
+    // 시간 포맷팅 함수
+    const formatDate = (publishDate) => {
+        if (!publishDate || publishDate.length < 5) return '';
+        const [year, month, day, hour, minute] = publishDate;
+        const now = new Date();
+        const articleDate = new Date(year, month - 1, day, hour, minute);
+        const diffMs = now - articleDate;
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+        if (diffMinutes < 60) {
+            return `${diffMinutes}분 전`;
+        } else if (diffMinutes < 1440) {
+            return `${Math.floor(diffMinutes / 60)}시간 전`;
+        } else {
+            return `${Math.floor(diffMinutes / 1440)}일 전`;
         }
+    };
+
+    // 텍스트 정리 함수
+    const cleanText = (text) => {
+        if (!text) return '';
+        return text
+            .replace(/&quot;/g, '"')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&nbsp;/g, ' ');
+    };
+
+    // 기사 데이터 가져오기
+    const getArticles = useCallback(async () => {
+        // 검색어가 없으면 요청하지 않음
+        if (!searchQuery.trim()) {
+            setArticles([]);
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const params = {
+                page: 1,
+                size: 20,
+                search: searchQuery.trim()
+            };
+
+            const res = await api.get('/api/articles', { params });
+
+            if (res.data.isSuccess) {
+                console.log(res.data.response.articleList);
+                setArticles(res.data.response.articleList);
+            }
+        } catch (error) {
+            console.error('기사 조회 실패:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [searchQuery]);
+
+    useEffect(() => {
+        getArticles();
+    }, [searchQuery, getArticles]);
+
+    const handleItemClick = (articleId) => {
+        setSelectedId(articleId);
+        if (onSelect) {
+            onSelect(articleId);
+        } else {
+            navigate(`/news/${articleId}`);
+        }
+    }
+
+    // 검색어가 없으면 아무것도 표시하지 않음
+    if (!searchQuery.trim()) {
+        return (
+            <NewsDetailListContainer>
+                <EmptyText>검색어를 입력해주세요</EmptyText>
+            </NewsDetailListContainer>
+        );
+    }
+
+    if (loading) {
+        return (
+            <NewsDetailListContainer>
+                <LoadingText>로딩 중...</LoadingText>
+            </NewsDetailListContainer>
+        );
+    }
+
+    // 검색어가 있는데 결과가 없는 경우
+    if (articles.length === 0) {
+        return (
+            <NewsDetailListContainer>
+                <NoResultsText>검색 결과가 없습니다</NoResultsText>
+            </NewsDetailListContainer>
+        );
     }
 
     return (
         <NewsDetailListContainer>
-            {newsDetailData.map((news, index) => (
+            {articles.map((article) => (
                 <NewsDetailItem
-                    key={index}
-                    onClick={() => handleItemClick(news.id)}
-                    $isSelected={selectedId === news.id}
+                    key={article.id}
+                    onClick={() => handleItemClick(article.id)}
+                    $isSelected={selectedId === article.id}
                 >
-                    <Category>{news.category}</Category>
+                    {/* <Category>{categoryMapping[article.category] || '기타'}</Category> */}
                     <ContentContainer>
-                        <Title>{news.title}</Title>
-                        <Content>{news.content}</Content>
+                        <Title>{cleanText(article.title)}</Title>
+                        <Content>{cleanText(article.content)}</Content>
                     </ContentContainer>
-                    {showTime && <Time>{news.time}</Time>} {/* 👈 조건부 렌더링 */}
+                    {showTime && <Time>{formatDate(article.publishDate)}</Time>}
                 </NewsDetailItem>
             ))}
-
-        </NewsDetailListContainer >
+        </NewsDetailListContainer>
     )
 }
 
@@ -65,7 +154,7 @@ const NewsDetailItem = styled.div`
     display: flex;
     border-bottom: 0.2px solid rgb(205, 205, 205);  
     padding-bottom: 16px;
-    height: 76px;
+    height: 56px;
     width: 100%;
     cursor: pointer;
 
@@ -77,15 +166,6 @@ const NewsDetailItem = styled.div`
         $isSelected ? theme.lightGray : "#fff"};
     
     color: ${({ $isSelected }) => ($isSelected ? "#fff" : "#333")};
-`;
-
-const Category = styled.span`
-    color: ${({ theme }) => theme.gray};
-    font-weight: 300;
-    font-size: 12px;
-    min-width: 52px;
-    text-align: left;
-    
 `;
 
 const ContentContainer = styled.div`
@@ -121,4 +201,27 @@ const Time = styled.span`
     font-size: 12px;
     text-align: right;
     min-width: 86px;
+`;
+
+const LoadingText = styled.div`
+    text-align: center;
+    padding: 40px;
+    color: ${({ theme }) => theme.gray};
+    font-size: 14px;
+`;
+
+const NoResultsText = styled.div`
+    text-align: center;
+    padding: 40px;
+    color: ${({ theme }) => theme.gray};
+    font-size: 14px;
+    font-weight: 500;
+`;
+
+const EmptyText = styled.div`
+    text-align: center;
+    padding: 40px;
+    color: ${({ theme }) => theme.gray};
+    font-size: 14px;
+    font-weight: 300;
 `;

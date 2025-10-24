@@ -1,19 +1,17 @@
 import styled from 'styled-components';
+import { forwardRef } from 'react';
 import userProfileGray from '../../assets/icons/userProfileGray.svg';
-import timeGray from '../../assets/icons/timeGray.svg';
 
-const AgoraCard = ({ agora, onClick }) => {
+const AgoraCard = forwardRef(({ agora, onClick }, ref) => {
     return (
-        <AgoraCardContainer onClick={onClick}>
+        <AgoraCardContainer ref={ref} onClick={onClick}>
             <AgoraCardHeader>
-                <AgoraCardTitle>{agora.title}</AgoraCardTitle>
+                <AgoraCardTitle>주제: {agora.title}</AgoraCardTitle>
                 <AgoraStatus $status={agora.status}>{agora.status === 'waiting' ? '대기중' : '진행중'}</AgoraStatus>
             </AgoraCardHeader>
-
             <AgoraCardDescription>
                 {agora.description}
             </AgoraCardDescription>
-
             <AgoraCardFooter>
                 <MetaItem>
                     <IconWrapper>
@@ -23,19 +21,14 @@ const AgoraCard = ({ agora, onClick }) => {
                 </MetaItem>
                 <Divider>|</Divider>
                 <MetaItem>
-                    <IconWrapper>
-                        <img src={timeGray} alt="user profile icon" />
-                    </IconWrapper>
-                    {agora.time}
-                </MetaItem>
-                <Divider>|</Divider>
-                <MetaItem>
                     <TagBadge>{agora.tag}</TagBadge>
                 </MetaItem>
             </AgoraCardFooter>
         </AgoraCardContainer>
     )
-}
+});
+
+AgoraCard.displayName = 'AgoraCard';
 
 export default AgoraCard;
 
@@ -43,6 +36,7 @@ const AgoraCardContainer = styled.div`
     height: 120px;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     padding: 20px 16px;
     gap: 6px;
     box-shadow: 0px 1px 10px 0px rgba(0, 0, 0, 0.1);
@@ -65,7 +59,7 @@ const AgoraCardTitle = styled.span`
 const AgoraStatus = styled.span`
     font-weight: 300;
     font-size: 10px;
-    color: ${({ $status }) => $status === 'progress' ? '#F83001' : '#4DB985'};
+    color: ${({ $status }) => $status === 'waiting' ? '#4DB985' : '#F83001'};
 
     &::before {
         content: "";
@@ -74,7 +68,7 @@ const AgoraStatus = styled.span`
         height: 8px;
         border-radius: 50%;
         margin-right: 6px;
-        background-color: ${({ $status }) => $status === 'progress' ? '#F83001' : '#4DB985'};
+        background-color: ${({ $status }) => $status === 'waiting' ? '#4DB985' : '#F83001'};
   }
     }
 `;
@@ -118,7 +112,8 @@ const Divider = styled.span`
 `;
 
 const TagBadge = styled.span`
-    background-color: ${({ theme }) => theme.lightGray};
+    background-color: ${({ theme }) => theme.mainLight};
+    color: #fff;
     border-radius: 5px;
     padding: 2px 6px;
     font-weight: 300;

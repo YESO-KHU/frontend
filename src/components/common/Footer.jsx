@@ -1,5 +1,6 @@
 import styled from 'styled-components';
-import { useLocation, useNavigate } from 'react-router-dom'; // React Router 사용 시
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAgoraStatus } from '../../contexts/AgoraStatusContext';
 import home from "../../assets/footer/home.svg";
 import agora from "../../assets/footer/agora.svg";
 import trend from "../../assets/footer/trend.svg";
@@ -8,6 +9,8 @@ import homeActive from "../../assets/footer/active/home.svg";
 import agoraActive from "../../assets/footer/active/agora.svg";
 import trendActive from "../../assets/footer/active/trend.svg";
 import myActive from "../../assets/footer/active/my.svg";
+import AgoraStatusSlide from '../agora/AgoraStatusSlide';
+import AgoraStatusIndicator from '../agora/AgoraStatusIndicator';
 
 // 경로 및 아이콘 정보 정의
 const navItems = [
@@ -20,22 +23,35 @@ const navItems = [
 const Footer = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isStatusSlideOpen, closeStatusSlide } = useAgoraStatus();
+
+  const handleAgoraClick = (route) => {
+    navigate(route);
+  };
 
   return (
-    <NavContainer>
-      <NavList>
-        {navItems.map((item, index) => {
-          const isActive = location.pathname === item.route;
-          return (
-            <NavItem key={index} onClick={() => navigate(item.route)}>
-              <NavIconWrapper active={isActive}>
-                <img src={isActive ? item.activeIcon : item.defaultIcon} alt="" />
-              </NavIconWrapper>
-            </NavItem>
-          );
-        })}
-      </NavList>
-    </NavContainer>
+    <>
+      <NavContainer>
+        <NavList>
+          {navItems.map((item, index) => {
+            const isActive = location.pathname === item.route;
+            return (
+              <NavItem key={index} onClick={() => handleAgoraClick(item.route)}>
+                <NavIconWrapper active={isActive}>
+                  <img src={isActive ? item.activeIcon : item.defaultIcon} alt="" />
+                </NavIconWrapper>
+              </NavItem>
+            );
+          })}
+        </NavList>
+      </NavContainer>
+
+      <AgoraStatusSlide
+        isOpen={isStatusSlideOpen}
+        onClose={closeStatusSlide}
+      />
+      <AgoraStatusIndicator />
+    </>
   );
 };
 

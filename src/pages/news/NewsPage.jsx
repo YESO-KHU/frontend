@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import Header from '../../components/common/Header';
 import SearchBar from '../../components/common/SearchBar';
@@ -8,30 +8,54 @@ import Footer from '../../components/common/Footer';
 import ListItem from '../../components/common/ListItem';
 import api from '../../api/api';
 
-const dummyArticles = [
-  { id: 1, time: "30분 전", category: "경제", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 2, time: "30분 전", category: "사회", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 3, time: "30분 전", category: "스포츠", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 4, time: "30분 전", category: "정치", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 5, time: "30분 전", category: "경제", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 6, time: "30분 전", category: "사회", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 7, time: "30분 전", category: "스포츠", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 8, time: "30분 전", category: "정치", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-];
-
-
 const NewsPage = () => {
-  async function getRecommendAritcle() {
+  const userName = localStorage.getItem('nickname');
+  const [recommendArticles, setRecommendArticles] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const formatDate = (publishDate) => {
+    if (!publishDate || publishDate.length < 5) return '';
+    const [year, month, day, hour, minute] = publishDate;
+    const now = new Date();
+    const articleDate = new Date(year, month - 1, day, hour, minute);
+    const diffMs = now - articleDate;
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    if (diffMinutes < 60) {
+      return `${diffMinutes}분 전`;
+    } else if (diffMinutes < 1440) {
+      return `${Math.floor(diffMinutes / 60)}시간 전`;
+    } else {
+      return `${Math.floor(diffMinutes / 1440)}일 전`;
+    }
+  };
+
+  const cleanText = (text) => {
+    if (!text) return '';
+    return text
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ');
+  };
+
+  const getRecommendArticle = async () => {
     try {
+      setLoading(true);
       const res = await api.get("/api/recommend/article");
-      console.log(res.data);
+      if (res.data.isSuccess) {
+        setRecommendArticles(res.data.response.articleList);
+      }
     } catch (err) {
       console.error("API 요청 실패:", err);
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
-    getRecommendAritcle()
+    getRecommendArticle();
   }, [])
 
   return (
@@ -42,18 +66,26 @@ const NewsPage = () => {
         <NewsList />
         <AgoraLink />
       </ContentContainer>
-      <Title>홍길동님을 위한 추천 뉴스✨</Title>
+      <Title>{userName}님을 위한 추천 뉴스✨</Title>
       <ListCard>
-        {dummyArticles.map((a) => (
-          <ListItem
-            key={a.id}
-            time={a.time}
-            category={a.category}
-            title={a.title}
-            preview={a.preview}
-            isLast={a.id === dummyArticles.length}
-          />
-        ))}
+        {loading ? (
+          <LoadingText>추천 뉴스를 불러오는 중...</LoadingText>
+        ) : recommendArticles.length === 0 ? (
+          <EmptyText>추천 뉴스가 없습니다.</EmptyText>
+        ) : (
+          recommendArticles.map((article, index) => (
+            <ListItem
+              categoryVisible={false}
+              key={article.id}
+              id={article.id}
+              time={formatDate(article.publishDate)}
+              category={article.articleCategory}
+              title={cleanText(article.title)}
+              preview={cleanText(article.content)}
+              isLast={index === recommendArticles.length - 1}
+            />
+          ))
+        )}
       </ListCard>
       <Footer />
     </PageContainer>
@@ -91,4 +123,18 @@ const ListCard = styled.div`
   border-radius: 22px;
   background: #FFF;
   box-shadow: 0 1px 10px 0 rgba(0, 0, 0, 0.10);
+`;
+
+const LoadingText = styled.div`
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  padding: 20px;
+`;
+
+const EmptyText = styled.div`
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  padding: 20px;
 `;

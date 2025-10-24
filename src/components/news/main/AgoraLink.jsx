@@ -1,9 +1,16 @@
 import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
 import agora from "../../../assets/img/agora.png"
 
 const AgoraLink = () => {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    navigate('/agora/detail');
+  };
+
   return (
-    <AgoraButton>
+    <AgoraButton onClick={handleClick}>
       <BackgroundImage src={agora} />
       <TextArea>
         <LeftContent>

@@ -2,23 +2,137 @@ import Footer from "../../components/common/Footer";
 import Header from "../../components/common/Header";
 import ListItem from "../../components/common/ListItem";
 import styled from 'styled-components';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import SearchBar from "../../components/common/SearchBar";
 import TrendAnalysisCard from "../../components/trend/TrendAnalysisCard";
+import { useEffect } from 'react';
+import api from "../../api/api";
 
 const TrendPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('이슈');
-  const categories = ['이슈', '경제', 'IT/과학', '생활/문화', '정치', '사회', '스포츠'];
-  const dummyArticles = [
-    { id: 1, category: "신문사1", title: "금융 이슈 관련 내용 제목", time: "30분 전", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-    { id: 2, category: "신문사2", title: "금융 이슈 관련 내용 제목", time: "1시간 전", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-    { id: 3, category: "신문사3", title: "금융 이슈 관련 내용 제목", time: "1일 전", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-    { id: 4, category: "신문사4", title: "금융 이슈 관련 내용 제목", time: "10분 전", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-    { id: 5, category: "신문사5", title: "금융 이슈 관련 내용 제목", time: "10분 전", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-    { id: 6, category: "신문사6", title: "금융 이슈 관련 내용 제목", time: "10분 전", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-    { id: 7, category: "신문사7", title: "금융 이슈 관련 내용 제목", time: "10분 전", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-    { id: 8, category: "신문사8", title: "금융 이슈 관련 내용 제목", time: "10분 전", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  ];
+  const categories = ['이슈', '경제', 'IT/과학', '문화', '정치', '사회', '글로벌'];
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [issueKeyword, setIssueKeyword] = useState('폭우');
+  const [page, setPage] = useState(1);
+  const observer = useRef();
+
+  // 카테고리 매핑
+  const categoryMapping = {
+    '이슈': 'ETC',
+    '경제': 'ECONOMY',
+    'IT/과학': 'IT',
+    '문화': 'CULTURE',
+    '정치': 'POLITICS',
+    '사회': 'SOCIETY',
+    '글로벌': 'GLOBAL',
+  };
+
+  //POLITICS, ECONOMY, SOCIETY, CULTURE, IT, GLOBAL, ETC
+
+  const formatDate = (publishDate) => {
+    if (!publishDate || publishDate.length < 5) return '';
+    const [year, month, day, hour, minute] = publishDate;
+    const now = new Date();
+    const articleDate = new Date(year, month - 1, day, hour, minute);
+    const diffMs = now - articleDate;
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    if (diffMinutes < 60) {
+      return `${diffMinutes}분 전`;
+    } else if (diffMinutes < 1440) {
+      return `${Math.floor(diffMinutes / 60)}시간 전`;
+    } else {
+      return `${Math.floor(diffMinutes / 1440)}일 전`;
+    }
+  };
+
+  const cleanText = (text) => {
+    if (!text) return '';
+    return text
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ');
+  };
+
+  const getTrendData = useCallback(async (pageNum = 1, reset = false) => {
+    try {
+      console.log("getTrendData 시작 - page:", pageNum, "reset:", reset);
+      setLoading(true);
+      const categoryParam = categoryMapping[selectedCategory];
+      const params = {
+        page: pageNum,
+        size: 10,
+        ...(categoryParam && { category: categoryParam })
+      };
+
+      console.log("API 요청 파라미터:", params);
+      const res = await api.get("/api/articles", { params });
+      console.log("API 응답:", res.data);
+
+      if (res.data.isSuccess) {
+        const newArticles = res.data.response.articleList;
+        console.log("새로운 기사들:", newArticles);
+        if (reset) {
+          setArticles(newArticles);
+        } else {
+          setArticles(prev => [...prev, ...newArticles]);
+        }
+        setHasMore(newArticles.length === 10);
+      }
+    } catch (err) {
+      console.error("API 요청 실패:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedCategory]);
+
+  const getTrendStats = async () => {
+    try {
+      console.log("getTrendStats 시작");
+      const res = await api.get("/api/stats/trend");
+      if (res.data.isSuccess) {
+        setIssueKeyword(res.data.response.keywordCount[0].keyword);
+      }
+    } catch (err) {
+      console.error("getTrendStats 실패:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    getTrendData(1, true);
+    getTrendStats();
+  }, []);
+
+  // 무한 스크롤을 위한 마지막 요소 참조
+  const lastArticleElementRef = useCallback(node => {
+    if (loading) return;
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        getTrendData(nextPage, false);
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [loading, hasMore, page, getTrendData]);
+
+  // 카테고리 변경 시 데이터 리셋
+  const handleCategoryChange = (category) => {
+    setSelectedCategory(category);
+    setPage(1);
+    setHasMore(true);
+    getTrendData(1, true);
+  };
+
+  useEffect(() => {
+    getTrendData(1, true);
+  }, [getTrendData]);
 
   return (
     <PageContainer>
@@ -30,7 +144,7 @@ const TrendPage = () => {
             <CategoryButton
               key={category}
               active={selectedCategory === category}
-              onClick={() => setSelectedCategory(category)}
+              onClick={() => handleCategoryChange(category)}
             >
               {category}
             </CategoryButton>
@@ -40,8 +154,8 @@ const TrendPage = () => {
       <ContentSection>
         <IssueKeywordCard>
           <CardTitle>이슈 키워드</CardTitle>
-          <KeywordIcon>☔</KeywordIcon>
-          <KeywordText>폭우</KeywordText>
+          <KeywordIcon>💡</KeywordIcon>
+          <KeywordText>{issueKeyword}</KeywordText>
         </IssueKeywordCard>
         <TrendAnalysisCard
           title="트렌드 분석"
@@ -50,16 +164,23 @@ const TrendPage = () => {
         />
       </ContentSection>
       <ListCard>
-        {dummyArticles.map((a) => (
-          <ListItem
-            key={a.id}
-            category={a.category}
-            title={a.title}
-            preview={a.preview}
-            time={a.time}
-            isLast={a.id === dummyArticles.length}
-          />
-        ))}
+        {loading ? (
+          <LoadingText>기사를 불러오는 중...</LoadingText>
+        ) : articles.length === 0 ? (
+          <EmptyText>기사가 없습니다.</EmptyText>
+        ) : (
+          articles.map((article, index) => (
+            <ListItem
+              key={article.id}
+              id={article.id}
+              category={selectedCategory}
+              title={cleanText(article.title)}
+              time={formatDate(article.publishDate)}
+              isLast={index === articles.length - 1}
+              ref={index === articles.length - 1 ? lastArticleElementRef : null}
+            />
+          ))
+        )}
       </ListCard>
       <Footer />
     </PageContainer>
@@ -168,4 +289,18 @@ const ListCard = styled.div`
   border-radius: 22px;
   background: #FFF;
   box-shadow: 0 1px 10px 0 rgba(0, 0, 0, 0.10);
+`;
+
+const LoadingText = styled.div`
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  padding: 20px;
+`;
+
+const EmptyText = styled.div`
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  padding: 20px;
 `;

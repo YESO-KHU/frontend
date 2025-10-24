@@ -5,19 +5,68 @@ import Header from "../../components/common/Header";
 import ListItem from "../../components/common/ListItem";
 import InterestChart from "../../components/news/main/InterestChart";
 import RecommendationCard from "../../components/news/main/RecommendationCard";
-
-const dummyArticles = [
-  { id: 1, category: "경제", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 2, category: "사회", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 3, category: "스포츠", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 4, category: "정치", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 5, category: "경제", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 6, category: "사회", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 7, category: "스포츠", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-  { id: 8, category: "정치", title: "금융 이슈 관련 내용 제목", preview: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용 금융 이슈 관련 내용 제목금융 이슈 관련 내용" },
-];
+import api from "../../api/api";
+import { useEffect, useState } from "react";
 
 const MyPage = () => {
+  const [scrapArticles, setScrapArticles] = useState([]);
+  const [userStats, setUserStats] = useState(null);
+
+  const formatDate = (publishDate) => {
+    if (!publishDate || publishDate.length < 5) return '';
+    const [year, month, day, hour, minute] = publishDate;
+    const now = new Date();
+    const articleDate = new Date(year, month - 1, day, hour, minute);
+    const diffMs = now - articleDate;
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    if (diffMinutes < 60) {
+      return `${diffMinutes}분 전`;
+    } else if (diffMinutes < 1440) {
+      return `${Math.floor(diffMinutes / 60)}시간 전`;
+    } else {
+      return `${Math.floor(diffMinutes / 1440)}일 전`;
+    }
+  };
+
+  const cleanText = (text) => {
+    if (!text) return '';
+    return text
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ');
+  };
+
+  const getScrapArticles = async () => {
+    try {
+      const res = await api.get("/api/scraps");
+      if (res.data.isSuccess) {
+        setScrapArticles(res.data.response.scrapList);
+      }
+    } catch (err) {
+      console.error("스크랩 목록 조회 실패:", err);
+    }
+  }
+
+  const getUserStats = async () => {
+    try {
+      const res = await api.get("/api/stats/article");
+      if (res.data.isSuccess) {
+        setUserStats(res.data.response);
+        console.log("사용자 통계:", res.data.response);
+      }
+    } catch (err) {
+      console.error("사용자 통계 조회 실패:", err);
+    }
+  }
+
+  useEffect(() => {
+    getScrapArticles();
+    getUserStats();
+  }, []);
+
   return (
     <PageContainer>
       <Inner>
@@ -25,28 +74,33 @@ const MyPage = () => {
         <ProfileCard>
           <Avatar src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?q=80&w=400" />
           <ProfileTexts>
-            <JoinedDate>2025. 8. 10. 가입</JoinedDate>
-            <Nickname>춤추는 다람쥐</Nickname>
-            <Interests>(관심분야) 정치 / 경제</Interests>
+            <JoinedDate>2025. 10. 24. 가입</JoinedDate>
+            <Nickname>{userStats?.nickName || '사용자'}</Nickname>
+            <Interests>
+              {userStats ?
+                `(관심분야) ${userStats.firstViewedArticleCategory} / ${userStats.secondViewedArticleCategory}`
+                : '(관심분야) 로딩 중...'
+              }
+            </Interests>
           </ProfileTexts>
         </ProfileCard>
         <ContentSection>
-          <InterestChart />
-          <RecommendationCard />
+          <InterestChart userStats={userStats} />
+          <RecommendationCard userStats={userStats} />
         </ContentSection>
         <ListCard>
-          {dummyArticles.map((a) => (
+          {scrapArticles.length > 0 ? scrapArticles.map((article, index) => (
             <ListItem
-              key={a.id}
-              category={a.category}
-              title={a.title}
-              preview={a.preview}
-              isLast={a.id === dummyArticles.length}
+              key={article.id}
+              id={article.id}
+              category="스크랩"
+              title={cleanText(article.title)}
+              time={formatDate(article.publishDate)}
+              isLast={index === scrapArticles.length - 1}
             />
-          ))}
+          )) : <EmptyText>스크랩한 기사가 없습니다.</EmptyText>}
         </ListCard>
       </Inner>
-
       <Footer />
     </PageContainer>
   );
@@ -111,6 +165,15 @@ const Nickname = styled.h3`
 const Interests = styled.span`
   font-size: 12px;
   font-weight: 300;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const InterestIcon = styled.img`
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 `;
 
 /* 리스트 카드 */
@@ -120,4 +183,11 @@ const ListCard = styled.div`
   border-radius: 22px;
   background: #FFF;
   box-shadow: 0 1px 10px 0 rgba(0, 0, 0, 0.10);
+`;
+
+const EmptyText = styled.div`
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  padding: 20px;
 `;

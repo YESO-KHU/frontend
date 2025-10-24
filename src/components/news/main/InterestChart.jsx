@@ -6,23 +6,6 @@ import styled from 'styled-components';
 // Chart.js에 필요한 요소 등록
 Chart.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
-const labels = ['경제', '스포츠', '사회', '정치', '생활/문화', 'IT/과학'];
-const data = {
-  labels,
-  datasets: [
-    {
-      label: '관심도',
-      data: [100, 70, 100, 40, 60, 70], // 0~100 사이 값
-      backgroundColor: 'rgba(6, 6, 250, 0.13)',
-      borderColor: '#0606FA',
-      pointBackgroundColor: '#0606FA',
-      borderWidth: 0.5,
-      pointRadius: 0.8,
-      pointHoverRadius: 2,
-    },
-  ],
-};
-
 const options = {
   responsive: true,
   maintainAspectRatio: true,
@@ -33,7 +16,7 @@ const options = {
   scales: {
     r: {
       angleLines: { display: false },
-      grid: { 
+      grid: {
         color: ['#BFBFBF', '#E0E0E0', '#E0E0E0', '#E0E0E0', '#E0E0E0'], // 바깥쪽부터 안쪽 순서
         lineWidth: [0.4, 0.2, 0.2, 0.2, 0.2], // 바깥쪽부터 안쪽 순서
       },
@@ -43,7 +26,7 @@ const options = {
       },
       min: 0,
       max: 100,
-      ticks: { 
+      ticks: {
         display: false,
         stepSize: 20,
       },
@@ -54,16 +37,58 @@ const options = {
   },
 };
 
-const InterestChartChartJS = () => (
-  <ChartCard>
-    <ChartTitle>분야별 관심도</ChartTitle>
-    <ChartContainer>
-      <Radar data={data} options={options} />
-    </ChartContainer>
-  </ChartCard>
-);
+const InterestChartChartJS = ({ userStats }) => {
+  // 기본 데이터 (로딩 중이거나 데이터가 없을 때)
+  const defaultData = [0, 0, 0, 0, 0, 0];
+  const defaultLabels = ['정치', '경제', '사회', '문화', 'IT/과학', '글로벌'];
 
-export default InterestChartChartJS; 
+  // 사용자 통계 데이터가 있을 때
+  const rawData = userStats ? [
+    userStats.politics_score || 0,
+    userStats.economy_score || 0,
+    userStats.society_score || 0,
+    userStats.culture_score || 0,
+    userStats.it_score || 0,
+    userStats.global_score || 0
+  ] : defaultData;
+
+  // 최대값을 찾아서 비례적으로 변환 (0-100 스케일)
+  const maxValue = Math.max(...rawData, 1); // 최소 1로 설정하여 0으로 나누기 방지
+  const chartData = rawData.map(value => (value / maxValue) * 100);
+
+  console.log('userStats:', userStats);
+  console.log('rawData:', rawData);
+  console.log('maxValue:', maxValue);
+  console.log('chartData:', chartData);
+  console.log('defaultLabels:', defaultLabels);
+
+  const data = {
+    labels: defaultLabels,
+    datasets: [
+      {
+        label: '관심도',
+        data: chartData,
+        backgroundColor: 'rgba(6, 6, 250, 0.13)',
+        borderColor: '#0606FA',
+        pointBackgroundColor: '#0606FA',
+        borderWidth: 0.5,
+        pointRadius: 0.8,
+        pointHoverRadius: 2,
+      },
+    ],
+  };
+
+  return (
+    <ChartCard>
+      <ChartTitle>분야별 관심도</ChartTitle>
+      <ChartContainer>
+        <Radar data={data} options={options} />
+      </ChartContainer>
+    </ChartCard>
+  );
+};
+
+export default InterestChartChartJS;
 
 const ChartCard = styled.div`
   background: white;

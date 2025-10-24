@@ -1,8 +1,23 @@
 import styled from 'styled-components';
+import back from '../../assets/icons/back.png';
+import { useNavigate } from 'react-router-dom';
 
-const Header = ({ content }) => {
+const Header = ({ content, onClick }) => {
+  const navigate = useNavigate();
+
+  const handleBackClick = () => {
+    if (onClick) {
+      onClick();
+    } else {
+      navigate(-1);
+    }
+  };
+
   return (
     <HeaderContainer>
+      {onClick && (
+        <BackIcon src={back} alt="back" onClick={handleBackClick} />
+      )}
       <Title isKorean={/^[가-힣]/.test(content)}>{content}</Title>
     </HeaderContainer>
   );
@@ -11,9 +26,21 @@ const Header = ({ content }) => {
 export default Header;
 
 const HeaderContainer = styled.header`
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
   padding-top: 10px;
   padding-bottom: 24px;
+`;
+
+const BackIcon = styled.img`
+  position: absolute;
+  left: 16px;
+  width: 6px;
+  height: 10px;
+  flex-shrink: 0;
+  cursor: pointer;
 `;
 
 const Title = styled.h1`
