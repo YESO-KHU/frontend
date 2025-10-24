@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Provider } from 'react-redux';
 import { store } from './store';
 import { AgoraStatusProvider } from './contexts/AgoraStatusContext';
-import NewsPage from './pages/News/NewsPage';
+import NewsPage from './pages/news/NewsPage';
 import AgoraPage from './pages/agora/AgoraPage';
 import TrendPage from './pages/trend/TrendPage';
 import MyPage from './pages/My/MyPage';

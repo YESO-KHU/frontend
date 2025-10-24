@@ -14,6 +14,7 @@ export const useAgoraStatus = () => {
 };
 
 export const AgoraStatusProvider = ({ children }) => {
+    const WS_URL = import.meta.env.VITE_API_URL;
     const [isStatusSlideOpen, setIsStatusSlideOpen] = useState(false);
 
     // WebSocket 관련 상태
@@ -47,7 +48,7 @@ export const AgoraStatusProvider = ({ children }) => {
             disconnectWebSocket();
         }
 
-        const socket = new SockJS('http://13.209.157.48:8080/ws');
+        const socket = new SockJS(`${WS_URL}/ws`);
         const stompClient = Stomp.over(socket);
 
         stompClient.connect({}, () => {
