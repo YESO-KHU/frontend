@@ -346,20 +346,20 @@ const Divider = styled.hr`
 
 // 🟨 밑줄 + 형광펜 스타일의 mark
 const HighlightMark = styled.mark`
-  background: linear-gradient(to top, #fff89a 45%, transparent 45%);
+  background: linear-gradient(to top, #cfbef4ff 45%, transparent 45%);
   text-underline-offset: 2px;
   cursor: pointer;
   transition: all 0.2s ease;
 
   &:hover {
-    background: linear-gradient(to top, #ffe97f 45%, transparent 45%);
+    background: linear-gradient(to top, #ecd878ff 45%, transparent 45%);
     text-decoration-color: #ffcd29;
   }
 
   ${({ focused }) =>
     focused &&
     `
-    background: linear-gradient(to top, #b4c4ff 45%, transparent 45%) !important;
+    background: linear-gradient(to top, #ffea82ff 45%, transparent 45%) !important;
      text-underline-offset: 3px;
      transition: all 0.2s ease;
    `}

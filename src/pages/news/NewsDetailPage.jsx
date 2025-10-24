@@ -8,7 +8,6 @@ import back from "../../assets/icons/back.png";
 import bookmark_outline from "../../assets/icons/bookmark_outline.png";
 import bookmark_filled from "../../assets/icons/bookmark_filled.png";
 import AiButton from '../../components/news/main/AiButton';
-import { useNavigate } from 'react-router-dom';
 
 import api from '../../api/api';
 
@@ -172,7 +171,7 @@ const NewsDetailPage = () => {
     <>
       <HeaderContainer>
         <BackIcon src={back} alt="뒤로가기" onClick={() => navigate(-1)} />
-        <Title>news</Title>
+        <Title onClick={() => navigate('/news')}>news</Title>
         <BookmarkImg
           src={bookmarked ? bookmark_filled : bookmark_outline}
           alt={bookmarked ? '북마크됨' : '북마크'}
@@ -187,6 +186,18 @@ const NewsDetailPage = () => {
       {article && !memosLoading && (
         <NewsDetailContent article={article} memos={memos} setMemos={setMemos} />
       )}
+
+      {/* ✅ 스켈레톤 표시 */}
+      {articleLoading ? (
+        <SkeletonWrapper>
+          <SkeletonBox width="70%" height="24px" />
+          <SkeletonBox width="100%" height="14px" />
+          <SkeletonBox width="100%" height="14px" />
+          <SkeletonBox width="90%" height="14px" />
+          <SkeletonBox width="100%" height="200px" />
+        </SkeletonWrapper>
+      ) : null}
+
       <AiButton onClick={() => setOpenSummary((v) => !v)} />
 
 
@@ -201,7 +212,9 @@ const NewsDetailPage = () => {
       )}
 
       <ButtonContainer>
-        <AgoraButton variant="secondary" onClick={() => navigate('/agora/create')}>아고라 생성하기</AgoraButton>
+        <AgoraButton variant="secondary" onClick={() => navigate('/agora/create',
+          { state: { newsId: article.id, newsTitle: article.title } }
+        )}>아고라 생성하기</AgoraButton>
         <AgoraButton variant="primary" onClick={() => navigate('/agora/join')}>아고라 참여하기</AgoraButton>
       </ButtonContainer>
 
@@ -242,12 +255,14 @@ const Title = styled.h1`
   text-transform: lowercase;
   letter-spacing: 0.02em;
   margin: 0;
+  cursor: pointer;
 `;
 
 
 const BackIcon = styled.img`
   width: auto;
   height: 10px;
+  cursor: pointer;
 `;
 
 const BookmarkImg = styled.img`
@@ -257,6 +272,7 @@ const BookmarkImg = styled.img`
     outline: 2px solid rgba(6, 6, 250, 0.6);
     outline-offset: 2px;
   }
+    cursor: pointer;
 `;
 
 const SummaryBox = styled.div`
@@ -373,4 +389,29 @@ const AgoraButton = styled.button`
         border: none;
         opacity: 0.7;
     }
+`;
+
+const SkeletonWrapper = styled.div`
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px;
+`;
+
+const SkeletonBox = styled.div`
+  width: ${({ width }) => width || '100%'};
+  height: ${({ height }) => height || '16px'};
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  animation: shimmer 1.4s ease infinite;
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
 `;

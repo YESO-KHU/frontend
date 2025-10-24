@@ -17,7 +17,7 @@ const AgoraParticipatePage = () => {
   return (
     <PageContainer>
       <HeaderContainer>
-        <BackIcon src={back} alt="뒤로가기" />
+        <BackIcon src={back} alt="뒤로가기" onClick={() => navigate(-1)} />
         <Title>아고라 참여하기</Title>
       </HeaderContainer>
 
@@ -35,12 +35,12 @@ const AgoraParticipatePage = () => {
             <CardDesc>{item.desc}</CardDesc>
             <InfoRow>
               <MemberInfo>
-                <ProfileImg src = {profileIcon} alt="참여자 프로필" />
+                <ProfileImg src={profileIcon} alt="참여자 프로필" />
                 <MemberText>{item.members}</MemberText>
               </MemberInfo>
 
-               <Divider>|</Divider>
-            
+              <Divider>|</Divider>
+
               <TypeTag>{item.type}</TypeTag>
             </InfoRow>
           </Card>

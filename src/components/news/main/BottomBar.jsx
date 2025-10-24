@@ -90,6 +90,7 @@ const ActionButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center; 
+    cursor: pointer;
 `;
 
 const Side = styled.div`
