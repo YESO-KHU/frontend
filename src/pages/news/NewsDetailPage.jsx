@@ -38,9 +38,12 @@ const NewsDetailPage = () => {
   const [keywordsError, setKeywordsError] = useState(null);      // 에러 상태
 
   const [article, setArticle] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [articleLoading, setArticleLoading] = useState(true);
   const [error, setError] = useState(null);
   const summaryRef = useRef(null);
+
+  const [memos, setMemos] = useState([]);
+  const [memosLoading, setMemosLoading] = useState(true);
 
   const { articleId } = useParams();
 
@@ -69,6 +72,9 @@ const NewsDetailPage = () => {
 
   // 기사 데이터 불러오기
   async function getArticle() {
+    if (!articleId) return;
+    setArticleLoading(true);
+
     try {
       const res = await api.get(`/api/articles/${articleId}`);
       console.log("기사 상세 조회 API 요청 성공:", res.data.response);
@@ -76,12 +82,33 @@ const NewsDetailPage = () => {
     } catch (err) {
       console.error("API 요청 실패:", err);
     } finally {
-      setLoading(false);
+      setArticleLoading(false);
     }
   }
   useEffect(() => {
     if (articleId) getArticle();
-  }, [articleId])
+  }, [articleId]);
+
+  // 메모 데이터 불러오기
+  async function getMemos() {
+    if (!articleId) return;
+    setMemosLoading(true);
+
+    try {
+      const res = await api.get(`/api/articles/${articleId}/memos`);
+      console.log("해당 기사의 메모 리스트 조회 API 요청 성공:", res.data.response);
+      setMemos(res.data.response.memoList);
+    } catch (err) {
+      console.error("API 요청 실패:", err);
+    } finally {
+      setMemosLoading(false);
+    }
+  }
+  useEffect(() => {
+    if (articleId) getMemos();
+  }, [articleId]);
+
+
 
   // 기사 핵심 단어 불러오기 
   async function getMainKeywords() {
@@ -150,7 +177,9 @@ const NewsDetailPage = () => {
           draggable={false}
         />
       </HeaderContainer>
-      <NewsDetailContent article={article} />
+      {article && !memosLoading && (
+        <NewsDetailContent article={article} memos={memos} setMemos={setMemos} />
+      )}
       <AiButton onClick={() => setOpenSummary((v) => !v)} />
 
 

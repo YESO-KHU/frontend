@@ -8,60 +8,48 @@ import WordModal from "./WordModal";
 
 
 
-const BottomBar = () => {
+const BottomBar = ({ articleId, selectedText, onMemoClick, onWordClick }) => {
   const [showSelectionBar, setShowSelectionBar] = useState(false);
   const [showMemo, setShowMemo] = useState(false);
-  const [showWord, setShowWord] = useState(false); 
+  const [showWord, setShowWord] = useState(false);
 
   useEffect(() => {
-    const handleMouseUp = () => {
-      const selection = window.getSelection();
-      const text = selection?.toString().trim();
-
-      if (text) {
-        setShowSelectionBar(true);
-      }
-      else {
-        setShowSelectionBar(false);
-      }
-    };
-
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => document.removeEventListener("mouseup", handleMouseUp);
-  }, []);
+    if (selectedText && selectedText.trim().length > 0) {
+      setShowSelectionBar(true);
+    } else {
+      setShowSelectionBar(false);
+    }
+  }, [selectedText]);
 
   return (
     <>
       {showSelectionBar ? (
         <BarContainer>
-            <ActionButton onClick = {() => setShowMemo(true)}>
-              <Side> 
-                <Icon src = {memoIcon} alt = "메모" />
-                <Label> 메모 </Label>
-              </Side>
-            </ActionButton>
+          <ActionButton onClick={onMemoClick}>
+            <Side>
+              <Icon src={memoIcon} alt="메모" />
+              <Label> 메모 </Label>
+            </Side>
+          </ActionButton>
 
           <Divider> | </Divider>
 
-          <ActionButton onClick={() => setShowWord(true)}>
+          <ActionButton onClick={onWordClick}>
             <Side>
-              <Icon src = {wordIcon} alt = "용어" />
+              <Icon src={wordIcon} alt="용어" />
               <Label> 용어 </Label>
             </Side>
           </ActionButton>
-        
+
         </BarContainer>
       ) : (
-        <AiButton />  
+        <AiButton />
       )}
-
-      {showMemo && <MemoModal onClose={() => setShowMemo(false)} />}
-      {showWord && <WordModal onClose={() => setShowWord(false)} />}
     </>
   );
 };
 
-export default BottomBar;  
+export default BottomBar;
 
 
 const BarContainer = styled.div`

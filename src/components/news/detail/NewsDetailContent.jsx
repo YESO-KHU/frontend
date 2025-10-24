@@ -1,10 +1,14 @@
 import { useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import BottomBar from "../main/BottomBar";
+import MemoModal from "../main/MemoModal";
+import api from "../../../api/api";
+import WordModal from "../main/WordModal";
 
 
 const fallbackNews = {
+  id: 1,
   category: "경제",
   title: "금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목",
   content: `금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용 제목금융 이슈 관련 내용
@@ -20,19 +24,131 @@ const fallbackNews = {
 };
 
 
-const NewsDetailContent = ({ article }) => {
-  const news = article || fallbackNews;
+const NewsDetailContent = ({ article, memos, setMemos }) => {
   const [openSummary, setOpenSummary] = useState(false);
 
+  const [selectedMemo, setSelectedMemo] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [showWordModal, setShowWordModal] = useState(false);
+  const [renderedContent, setRenderedContent] = useState(null);
+
+  const [selectedText, setSelectedText] = useState("");
+  const [range, setRange] = useState({ start: 0, end: 0 });
+  const [focusedMemoId, setFocusedMemoId] = useState(null);
+
+  const news = article || fallbackNews;
+
+  if (!article) return null;
+  const content = article.content || "";
+
+  // 본문 + 하이라이트 렌더링
+  const renderWithHighlights = (text) => {
+    if (!memos?.length) return text;
+
+    const sorted = [...memos].sort((a, b) => a.startIndex - b.startIndex);
+    const parts = [];
+    let last = 0;
+
+    sorted.forEach((m, i) => {
+      if (m.startIndex > last) {
+        parts.push(<span key={`text-${i}`}>{text.slice(last, m.startIndex)}</span>);
+      }
+
+      // 하이라이트된 영역 (<mark>) 클릭 시 MemoModal 띄움
+      parts.push(
+        <HighlightMark
+          key={`memo-${m.id}`}
+          onClick={() => {
+            setSelectedMemo(m);
+            setShowModal(true); // 클릭 시 모달 띄우기
+            setFocusedMemoId(m.id); // 포커스 이동
+          }}
+          focused={m.id === focusedMemoId} // ✅ 현재 포커스 여부 전달
+        >
+          {text.slice(m.startIndex, m.endIndex)}
+        </HighlightMark>
+      );
+
+      last = m.endIndex;
+    });
+
+    if (last < text.length) {
+      parts.push(<span key="end">{text.slice(last)}</span>);
+    }
+
+    return parts;
+  };
+
+  // 모달 닫기 (수정/삭제 후 새로고침 없이 갱신)
+  const handleModalClose = async (refresh = false) => {
+    setShowModal(false);
+    setSelectedMemo(null);
+    if (refresh) await fetchMemos();
+  };
+
+  /** 드래그 감지 */
+  useEffect(() => {
+    // 마우스 드래그 후 마우스 버튼을 놓는 순간 실행될 함수 정의
+    const handleMouseUp = () => {
+      // 사용자가 드래그한 텍스트(선택 영역)를 가져옴
+      const selection = window.getSelection();
+      const text = selection?.toString().trim();
+
+      // ✅ 선택이 해제되면 BottomBar 닫기
+      if (!text) {
+        setSelectedText("");
+        setSelectedMemo(null);
+        setFocusedMemoId(null);
+        return;
+      }
+
+      // ✅ 선택된 실제 Range 객체
+      const range = selection.getRangeAt(0);
+
+      // ✅ 전체 본문 기준으로 실제 인덱스를 계산하려면
+      //    Range의 startContainer부터 root(<BodyText>) 기준으로 offset 계산
+      const bodyEl = document.getElementById("news-body"); // <BodyText>에 id 줘야 함
+      const preSelectionRange = range.cloneRange();
+      preSelectionRange.selectNodeContents(bodyEl);
+      preSelectionRange.setEnd(range.startContainer, range.startOffset);
+      const start = preSelectionRange.toString().length;
+      const end = start + range.toString().length;
+
+      // ✅ 이제 진짜 정확한 startIndex / endIndex
+      setSelectedText(text);
+      setRange({ start, end });
+
+      // 이미 등록된 메모 중 같은 범위가 있는지 확인
+      const found = memos.find(
+        (m) => m.startIndex < end && m.endIndex > start
+      );
+
+      console.log("선택된 텍스트에 해당하는 기존 메모:", found);
+
+      // 상태 업데이트
+      if (found) {
+        if (selection) selection.removeAllRanges();
+        setSelectedMemo(found);
+        setSelectedText(found.content);
+        setFocusedMemoId(found.id); // 포커스 이동
+      } else {
+        setSelectedMemo(null);
+        setFocusedMemoId(null);
+      }
+    };
+
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => document.removeEventListener("mouseup", handleMouseUp);
+  }, [memos]);
 
 
   return (
     <Wrapper>
-
       <TopMeta>
         <Category>{news.articleCategory}</Category>
         <PublishDate>{formatDate(news.publishDate)}</PublishDate>
       </TopMeta>
+
       <Divider />
 
 
@@ -42,18 +158,45 @@ const NewsDetailContent = ({ article }) => {
       */}
       <Title dangerouslySetInnerHTML={{ __html: decodeHtmlEntities(news.title) }} />
 
+
       <SubMeta>
         <Author>출처: {news.link ? <a href={news.link}>원문 링크</a> : "알 수 없음"}</Author>
         <View>view <strong>{news.viewCount}</strong></View>
       </SubMeta>
 
+
       {/* <Thumbnail /> */}
 
-      <BodyText>{news.content}</BodyText>
 
-      <BottomBar />
+      <BodyText id="news-body">{renderWithHighlights(content)}</BodyText>
+
+      <BottomBar
+        articleId={news.id}
+        selectedText={selectedText}
+        onMemoClick={() => setShowModal(true)}
+        onWordClick={() => setShowWordModal(true)}
+      />
 
 
+      {showModal && (
+        <MemoModal
+          memo={selectedMemo}
+          articleId={news.id}
+          onClose={handleModalClose}
+          existingMemo={selectedMemo}
+          range={range}
+          setMemos={setMemos}
+          selectedText={selectedText}
+        />
+      )}
+
+      {showWordModal && (
+        <WordModal
+          onClose={() => setShowWordModal(false)}
+          articleId={news.id}
+          selectedText={selectedText}
+        />
+      )}
     </Wrapper>
   );
 };
@@ -199,4 +342,25 @@ const Divider = styled.hr`
   border: none;
   border-top: 1px solid #e0e0e0;
   margin: 16px 0;
+`;
+
+// 🟨 밑줄 + 형광펜 스타일의 mark
+const HighlightMark = styled.mark`
+  background: linear-gradient(to top, #fff89a 45%, transparent 45%);
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: linear-gradient(to top, #ffe97f 45%, transparent 45%);
+    text-decoration-color: #ffcd29;
+  }
+
+  ${({ focused }) =>
+    focused &&
+    `
+    background: linear-gradient(to top, #b4c4ff 45%, transparent 45%) !important;
+     text-underline-offset: 3px;
+     transition: all 0.2s ease;
+   `}
 `;
