@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from '../../components/common/Header';
 import SearchBar from '../../components/common/SearchBar';
@@ -8,7 +9,6 @@ import bookmark_outline from "../../assets/icons/bookmark_outline.png";
 import bookmark_filled from "../../assets/icons/bookmark_filled.png";
 import AiButton from '../../components/news/main/AiButton';
 
-import { useParams } from 'react-router-dom';
 import api from '../../api/api';
 
 const mockArticle = {
@@ -30,6 +30,7 @@ AI 윤리와 데이터 보안 문제에 대한 논의도 활발히 진행 중입
 
 
 const NewsDetailPage = () => {
+  const navigate = useNavigate();
   const [bookmarked, setBookmarked] = useState(false);
 
   const [openSummary, setOpenSummary] = useState(false);
@@ -194,8 +195,8 @@ const NewsDetailPage = () => {
       )}
 
       <ButtonContainer>
-        <AgoraButton variant="secondary">아고라 생성하기</AgoraButton>
-        <AgoraButton variant="primary">아고라 참여하기</AgoraButton>
+        <AgoraButton variant="secondary" onClick={() => navigate('/agora/create')}>아고라 생성하기</AgoraButton>
+        <AgoraButton variant="primary" onClick={() => navigate('/agora/join')}>아고라 참여하기</AgoraButton>
       </ButtonContainer>
 
     </>
