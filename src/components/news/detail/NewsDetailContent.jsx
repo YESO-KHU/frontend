@@ -85,61 +85,141 @@ const NewsDetailContent = ({ article, memos, setMemos }) => {
     setSelectedMemo(null);
     if (refresh) await fetchMemos();
   };
-
-  /** 드래그 감지 */
   useEffect(() => {
-    // 마우스 드래그 후 마우스 버튼을 놓는 순간 실행될 함수 정의
-    const handleMouseUp = () => {
-      // 사용자가 드래그한 텍스트(선택 영역)를 가져옴
-      const selection = window.getSelection();
-      const text = selection?.toString().trim();
+    // 모바일/PC 환경 모두에서 텍스트 드래그(선택) 감지
+    // iOS Safari에서는 mouseup 이벤트가 없고 selectionchange만 발생함
+    // 따라서 두 이벤트를 병행 처리해야 함
 
-      // ✅ 선택이 해제되면 BottomBar 닫기
-      if (!text) {
-        setSelectedText("");
-        setSelectedMemo(null);
-        setFocusedMemoId(null);
-        return;
-      }
+    let touchSelecting = false; // 터치 중인지 여부
+    let selectionTimeout; // 디바운싱 타이머
 
-      // ✅ 선택된 실제 Range 객체
-      const range = selection.getRangeAt(0);
+    //  selectionchange 이벤트 핸들러
+    const handleSelectionChange = () => {
+      // iOS Safari에서는 selectionchange가 여러 번 발생 → 디바운싱 필요
+      clearTimeout(selectionTimeout);
+      selectionTimeout = setTimeout(() => {
+        const selection = window.getSelection();
+        const text = selection?.toString().trim();
 
-      // ✅ 전체 본문 기준으로 실제 인덱스를 계산하려면
-      //    Range의 startContainer부터 root(<BodyText>) 기준으로 offset 계산
-      const bodyEl = document.getElementById("news-body"); // <BodyText>에 id 줘야 함
-      const preSelectionRange = range.cloneRange();
-      preSelectionRange.selectNodeContents(bodyEl);
-      preSelectionRange.setEnd(range.startContainer, range.startOffset);
-      const start = preSelectionRange.toString().length;
-      const end = start + range.toString().length;
+        // ✅ 선택 해제 시 상태 초기화
+        if (!text) {
+          setSelectedText("");
+          setSelectedMemo(null);
+          setFocusedMemoId(null);
+          return;
+        }
 
-      // ✅ 이제 진짜 정확한 startIndex / endIndex
-      setSelectedText(text);
-      setRange({ start, end });
+        // ✅ 실제 Range 객체 가져오기 (선택 영역 정보)
+        try {
+          const range = selection.getRangeAt(0);
+          const bodyEl = document.getElementById("news-body"); // <BodyText id="news-body"> 필요
+          if (!bodyEl) return;
 
-      // 이미 등록된 메모 중 같은 범위가 있는지 확인
-      const found = memos.find(
-        (m) => m.startIndex < end && m.endIndex > start
-      );
+          // ✅ 전체 본문 기준으로 startIndex / endIndex 계산
+          const preSelectionRange = range.cloneRange();
+          preSelectionRange.selectNodeContents(bodyEl);
+          preSelectionRange.setEnd(range.startContainer, range.startOffset);
+          const start = preSelectionRange.toString().length;
+          const end = start + range.toString().length;
 
-      console.log("선택된 텍스트에 해당하는 기존 메모:", found);
+          setSelectedText(text);
+          setRange({ start, end });
 
-      // 상태 업데이트
-      if (found) {
-        if (selection) selection.removeAllRanges();
-        setSelectedMemo(found);
-        setSelectedText(found.content);
-        setFocusedMemoId(found.id); // 포커스 이동
+          // ✅ 이미 등록된 메모와 겹치는지 확인
+          const found = memos.find((m) => m.startIndex < end && m.endIndex > start);
+
+          if (found) {
+            // 기존 메모 선택 상태로 전환
+            setSelectedMemo(found);
+            setSelectedText(found.content);
+            setFocusedMemoId(found.id);
+          } else {
+            setSelectedMemo(null);
+            setFocusedMemoId(null);
+          }
+        } catch (err) {
+          console.warn("선택 영역 계산 실패:", err);
+        }
+      }, 150); // 디바운스 150ms
+    };
+
+    // 👆 터치 시작 시 플래그 설정 (모바일 감지용)
+    const handleTouchStart = () => (touchSelecting = true);
+
+    // 👇 터치 종료 후 selectionchange 이벤트 발생하므로 약간의 지연 후 실행
+    const handleTouchEnd = () => {
+      touchSelecting = false;
+      setTimeout(handleSelectionChange, 200);
+    };
+
+    // 💻 PC/모바일 둘 다 대응하도록 이벤트 등록
+    document.addEventListener("selectionchange", handleSelectionChange);
+    document.addEventListener("mouseup", handleSelectionChange);
+    document.addEventListener("touchstart", handleTouchStart);
+    document.addEventListener("touchend", handleTouchEnd);
+
+    // 💣 클린업 (컴포넌트 언마운트 시 제거)
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange);
+      document.removeEventListener("mouseup", handleSelectionChange);
+      document.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchend", handleTouchEnd);
+      clearTimeout(selectionTimeout);
+    };
+  }, [memos]);
+
+  useEffect(() => {
+    const bodyEl = document.getElementById("news-body");
+    if (!bodyEl) return;
+
+    let touchStartIndex = 0;
+    let touchEndIndex = 0;
+
+    // 터치 시작 지점 저장
+    const handleTouchStart = (e) => {
+      const touch = e.touches[0];
+      const range = document.caretRangeFromPoint(touch.clientX, touch.clientY);
+      if (!range) return;
+      const preRange = range.cloneRange();
+      preRange.selectNodeContents(bodyEl);
+      preRange.setEnd(range.startContainer, range.startOffset);
+      touchStartIndex = preRange.toString().length;
+    };
+
+    // 터치 끝났을 때 선택된 텍스트 계산
+    const handleTouchEnd = (e) => {
+      const touch = e.changedTouches[0];
+      const range = document.caretRangeFromPoint(touch.clientX, touch.clientY);
+      if (!range) return;
+      const preRange = range.cloneRange();
+      preRange.selectNodeContents(bodyEl);
+      preRange.setEnd(range.startContainer, range.startOffset);
+      touchEndIndex = preRange.toString().length;
+
+      const [start, end] = [
+        Math.min(touchStartIndex, touchEndIndex),
+        Math.max(touchStartIndex, touchEndIndex)
+      ];
+      const text = bodyEl.innerText.slice(start, end);
+
+      // ✅ state 업데이트 (BottomBar 표시용)
+      if (text && text.trim().length > 0) {
+        setSelectedText(text.trim());
+        setRange({ start, end });
       } else {
-        setSelectedMemo(null);
-        setFocusedMemoId(null);
+        setSelectedText("");
       }
     };
 
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => document.removeEventListener("mouseup", handleMouseUp);
-  }, [memos]);
+    bodyEl.addEventListener("touchstart", handleTouchStart);
+    bodyEl.addEventListener("touchend", handleTouchEnd);
+
+    return () => {
+      bodyEl.removeEventListener("touchstart", handleTouchStart);
+      bodyEl.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, []);
+
 
 
   return (
